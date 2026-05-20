@@ -27,9 +27,16 @@ externalPort = 80
 localPort = 8081
 externalPort = 8081
 
+[[ports]]
+localPort = 24307
+externalPort = 3000
+
 [userenv]
 
 [userenv.shared]
 SUPABASE_URL = "https://mmwiomhbmqxxmdihivwh.supabase.co"
 SUPABASE_BUCKET = "tickets"
 JWT_EXPIRES_IN = "7d"
+
+[nix]
+channel = "stable-25_05"
