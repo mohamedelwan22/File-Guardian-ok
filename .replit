@@ -26,3 +26,10 @@ externalPort = 80
 [[ports]]
 localPort = 8081
 externalPort = 8081
+
+[userenv]
+
+[userenv.shared]
+SUPABASE_URL = "https://mmwiomhbmqxxmdihivwh.supabase.co"
+SUPABASE_BUCKET = "tickets"
+JWT_EXPIRES_IN = "7d"
