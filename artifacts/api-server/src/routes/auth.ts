@@ -14,9 +14,8 @@ router.post("/login", async (req, res) => {
       return;
     }
 
-    const user = await db.query.usersTable.findFirst({
-      where: eq(usersTable.email, email),
-    });
+    const userRows = await db.select().from(usersTable).where(eq(usersTable.email, email)).limit(1);
+    const user = userRows[0];
 
     if (!user || !(await verifyPassword(password, user.passwordHash))) {
       res.status(401).json({ error: "بيانات الدخول غير صحيحة" });
@@ -25,9 +24,11 @@ router.post("/login", async (req, res) => {
 
     await db.update(usersTable).set({ lastLogin: new Date() }).where(eq(usersTable.id, user.id));
 
-    const company = user.companyId
-      ? await db.query.companiesTable.findFirst({ where: eq(companiesTable.id, user.companyId) })
-      : null;
+    let company = null;
+    if (user.companyId) {
+      const companyRows = await db.select().from(companiesTable).where(eq(companiesTable.id, user.companyId)).limit(1);
+      company = companyRows[0] ?? null;
+    }
 
     const token = generateToken({ userId: user.id, email: user.email, role: user.role });
 
@@ -75,9 +76,8 @@ router.get("/me", async (req, res) => {
       res.status(401).json({ error: "جلسة منتهية" });
       return;
     }
-    const user = await db.query.usersTable.findFirst({
-      where: eq(usersTable.id, payload.userId),
-    });
+    const rows = await db.select().from(usersTable).where(eq(usersTable.id, payload.userId)).limit(1);
+    const user = rows[0];
     if (!user) {
       res.status(401).json({ error: "المستخدم غير موجود" });
       return;

@@ -18,6 +18,11 @@ function paramId(req: AuthRequest): string {
   return Array.isArray(v) ? v[0] : v;
 }
 
+async function findUser(id: string) {
+  const rows = await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, id)).limit(1);
+  return rows[0] ?? null;
+}
+
 // GET /api/tickets/stats
 router.get("/stats", requireAuth, async (req: AuthRequest, res) => {
   try {
@@ -30,7 +35,7 @@ router.get("/stats", requireAuth, async (req: AuthRequest, res) => {
 
     const recent = all.slice(0, 5);
     const recentWithNames = await Promise.all(recent.map(async (t) => {
-      const u = await db.query.usersTable.findFirst({ where: eq(usersTable.id, t.createdBy) });
+      const u = await findUser(t.createdBy);
       return { ...t, userName: u?.name ?? null };
     }));
 
@@ -59,7 +64,7 @@ router.get("/", requireAuth, async (req: AuthRequest, res) => {
       .orderBy(desc(ticketsTable.createdAt));
 
     const withNames = await Promise.all(tickets.map(async (t) => {
-      const u = await db.query.usersTable.findFirst({ where: eq(usersTable.id, t.createdBy) });
+      const u = await findUser(t.createdBy);
       return { ...t, userName: u?.name ?? null };
     }));
 
@@ -155,14 +160,13 @@ router.get("/:id", requireAuth, async (req: AuthRequest, res) => {
   try {
     const user = req.user!;
     const id = paramId(req);
-    const ticket = await db.query.ticketsTable.findFirst({
-      where: eq(ticketsTable.id, id),
-    });
+    const rows = await db.select().from(ticketsTable).where(eq(ticketsTable.id, id)).limit(1);
+    const ticket = rows[0];
     if (!ticket || ticket.companyId !== user.companyId) {
       res.status(404).json({ error: "التذكرة غير موجودة" });
       return;
     }
-    const u = await db.query.usersTable.findFirst({ where: eq(usersTable.id, ticket.createdBy) });
+    const u = await findUser(ticket.createdBy);
     res.json({ success: true, ticket: { ...ticket, userName: u?.name ?? null } });
   } catch (e: unknown) {
     req.log.error(e, "getTicket error");
@@ -175,7 +179,8 @@ router.patch("/:id", requireAuth, async (req: AuthRequest, res) => {
   try {
     const user = req.user!;
     const id = paramId(req);
-    const existing = await db.query.ticketsTable.findFirst({ where: eq(ticketsTable.id, id) });
+    const existingRows = await db.select().from(ticketsTable).where(eq(ticketsTable.id, id)).limit(1);
+    const existing = existingRows[0];
     if (!existing || existing.companyId !== user.companyId) {
       res.status(404).json({ error: "التذكرة غير موجودة" });
       return;
@@ -204,7 +209,8 @@ router.delete("/:id", requireAuth, async (req: AuthRequest, res) => {
   try {
     const user = req.user!;
     const id = paramId(req);
-    const existing = await db.query.ticketsTable.findFirst({ where: eq(ticketsTable.id, id) });
+    const existingRows = await db.select().from(ticketsTable).where(eq(ticketsTable.id, id)).limit(1);
+    const existing = existingRows[0];
     if (!existing || existing.companyId !== user.companyId) {
       res.status(404).json({ error: "التذكرة غير موجودة" });
       return;
@@ -224,13 +230,15 @@ router.post("/:id/generate", requireAuth, async (req: AuthRequest, res) => {
     if (!user.companyId) { res.status(403).json({ error: "غير مصرح" }); return; }
     const id = paramId(req);
 
-    const ticket = await db.query.ticketsTable.findFirst({ where: eq(ticketsTable.id, id) });
+    const ticketRows = await db.select().from(ticketsTable).where(eq(ticketsTable.id, id)).limit(1);
+    const ticket = ticketRows[0];
     if (!ticket || ticket.companyId !== user.companyId) {
       res.status(404).json({ error: "التذكرة غير موجودة" });
       return;
     }
 
-    const company = await db.query.companiesTable.findFirst({ where: eq(companiesTable.id, user.companyId) });
+    const companyRows = await db.select().from(companiesTable).where(eq(companiesTable.id, user.companyId)).limit(1);
+    const company = companyRows[0];
     if (!company) { res.status(404).json({ error: "الشركة غير موجودة" }); return; }
 
     const pdfBuf = await generateTicketPDF(

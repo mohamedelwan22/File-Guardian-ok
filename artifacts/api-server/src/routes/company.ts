@@ -15,9 +15,8 @@ router.get("/", requireAuth, async (req: AuthRequest, res) => {
       res.status(404).json({ error: "لا توجد شركة مرتبطة بهذا المستخدم" });
       return;
     }
-    const company = await db.query.companiesTable.findFirst({
-      where: eq(companiesTable.id, user.companyId),
-    });
+    const rows = await db.select().from(companiesTable).where(eq(companiesTable.id, user.companyId)).limit(1);
+    const company = rows[0];
     if (!company) {
       res.status(404).json({ error: "الشركة غير موجودة" });
       return;

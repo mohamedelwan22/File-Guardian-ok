@@ -1,6 +1,5 @@
 import type { Request, Response, NextFunction } from "express";
-import { db } from "@workspace/db";
-import { usersTable } from "@workspace/db";
+import { db, usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { getTokenFromRequest, verifyToken } from "../lib/auth.js";
 
@@ -15,10 +14,8 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     res.status(401).json({ error: "جلسة منتهية — سجل الدخول مجدداً" });
     return;
   }
-  const user = await db.query.usersTable.findFirst({
-    where: eq(usersTable.id, payload.userId),
-    with: { company: true } as never,
-  });
+  const rows = await db.select().from(usersTable).where(eq(usersTable.id, payload.userId)).limit(1);
+  const user = rows[0];
   if (!user || !user.isActive) {
     res.status(401).json({ error: "الحساب غير نشط" });
     return;
